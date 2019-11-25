@@ -21,10 +21,10 @@ if [ ! -e $REF_FILE ]; then
 fi
 
 LINES=$(cat "${REF_FILE}" | wc -l | tr -d ' ')
-GO_FILES=$(find . -not -wholename "*Godeps*" -name "*.go")
+GO_FILES=$(find . -name "*.go" | grep -v -e "vendor")
 
 for FILE in ${GO_FILES}; do
-  DIFFER=$(cat "${FILE}" | sed 's/2015/2014/g' | head "-${LINES}" | diff -q - "${REF_FILE}")
+  DIFFER=$(cat "${FILE}" | sed 's/201[5-7]\{1\}/2014/g' | head "-${LINES}" | diff -q - "${REF_FILE}")
 
   if [[ ! -z "${DIFFER}" ]]; then
     echo "${FILE} does not have the correct copyright notice."

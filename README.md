@@ -1,34 +1,50 @@
 # Heapster
-Heapster enables Container Cluster Monitoring. 
 
-Internally, heapster uses [cAdvisor](https://github.com/google/cadvisor) for compute resource usage metrics.
+***RETIRED***: Heapster is now retired.  See the [deprecation timeline](docs/deprecation.md)
+for more information on support. We will not be making changes to Heapster.
 
-Heapster currently supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) and CoreOS natively. It can be extended to support other cluster management solutions easily.
-While running in a Kube cluster, heapster collects compute resource usage of all pods and nodes.
+The following are potential migration paths for Heapster functionality:
 
-Source configuration is documented [here](docs/source-configuration.md).
+- **For basic CPU/memory HPA metrics**: Use [metrics-server](https://github.com/kubernetes-incubator/metrics-server).
+
+- **For general monitoring**: Consider a third-party monitoring pipeline that can gather Prometheus-formatted metrics.
+  The kubelet exposes all the metrics exported by Heapster in Prometheus format.
+  One such monitoring pipeline can be set up using the [Prometheus Operator](https://github.com/coreos/prometheus-operator), which
+  deploys Prometheus itself for this purpose.
+
+- **For event transfer**: Several third-party tools exist to transfer/archive Kubernetes events, depending on your sink.
+  [heptiolabs/eventrouter](https://github.com/heptiolabs/eventrouter) has been suggested as a general alternative.
+
+[![GoDoc](https://godoc.org/k8s.io/heapster?status.svg)](https://godoc.org/k8s.io/heapster) [![Build Status](https://travis-ci.org/kubernetes/heapster.svg?branch=master)](https://travis-ci.org/kubernetes/heapster)  [![Go Report Card](https://goreportcard.com/badge/github.com/kubernetes/heapster)](https://goreportcard.com/report/github.com/kubernetes/heapster)
+
+Heapster enables Container Cluster Monitoring and Performance Analysis for [Kubernetes](https://github.com/kubernetes/kubernetes) (versions v1.0.6 and higher), and platforms which include it.
+
+Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc.
+Note that the model API, formerly used provide REST access to its collected metrics, is now deprecated.
+Please see [the model documentation](docs/model.md) for more details.
+
+Heapster supports multiple sources of data.
+More information [here](docs/source-configuration.md).
+
+Heapster supports the pluggable storage backends described [here](docs/sink-owners.md).
+We welcome patches that add additional storage backends.
+Documentation on storage sinks [here](docs/sink-configuration.md).
+The current version of Storage Schema is documented [here](docs/storage-schema.md).
 
 ### Running Heapster on Kubernetes
-Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/) and [Google Cloud Logging](https://cloud.google.com/logging/). We welcome patches that add additional storage backends.
 
-To run Heapster on a Kubernetes cluster with,
-- InfluxDB use [this guide](docs/influxdb.md). 
-- Google Cloud Monitoring and Google Cloud Logging use [this guide](docs/google.md).
+Heapster can run on a Kubernetes cluster using a number of backends.  Some common choices:
+- [InfluxDB](docs/influxdb.md)
+- [Stackdriver Monitoring and Logging](docs/google.md) for Google Cloud Platform
+- [Other backends](docs/)
 
-Take a look at the storage schema [here](docs/storage-schema.md).
+### Running Heapster on OpenShift
 
-### Running Heapster on CoreOS
-Heapster communicates with the local fleet server to get cluster information. It expected cAdvisor to be running on all the nodes. Refer to [this guide](docs/coreos.md).
-
-### Running in other cluster management systems.
-
-Heapster can be used to enable cluster-wide monitoring on other cluster management solutions by running a simple cluster-specific buddy container that will help Heapster with discovery of hosts.
-
-### Running in standalone mode.
-
-It is also possible to run Heapster standalone on a host with cAdvisor using [this guide](docs/standalone.md).
+Using Heapster to monitor an OpenShift cluster requires some additional changes to the Kubernetes instructions to allow communication between the Heapster instance and OpenShift's secured endpoints. To run standalone Heapster or a combination of Heapster and Hawkular-Metrics in OpenShift, follow [this guide](https://github.com/openshift/origin-metrics).
 
 #### Troubleshooting guide [here](docs/debugging.md)
 
-### Community
-Contributions, questions, and comments are all welcomed and encouraged! Heapster and cAdvisor developers hang out in the [#google-containers](http://webchat.freenode.net/?channels=google-containers) room on freenode.net.  You can also reach us on the [google-containers Google Groups mailing list](https://groups.google.com/forum/#!forum/google-containers).
+
+## Community
+
+Contributions, questions, and comments are all welcomed and encouraged! Developers hang out on [Slack](https://kubernetes.slack.com) in the #sig-instrumentation channel (get an invitation [here](http://slack.kubernetes.io/)). We also have the [kubernetes-dev Google Groups mailing list](https://groups.google.com/forum/#!forum/kubernetes-dev). If you are posting to the list please prefix your subject with "heapster: ".

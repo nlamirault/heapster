@@ -1,59 +1,51 @@
 # Run Heapster in a Kubernetes cluster with an InfluxDB backend and a Grafana UI
 
-_Warning: Virtual machines need to have at least 2 cores for InfluxDB to perform optimally._
-
 ### Setup a Kubernetes cluster
-[Bring up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes), if you haven't already. Ensure that `kubecfg.sh` is exported.
+[Bring up a Kubernetes cluster](https://github.com/kubernetes/kubernetes), if you haven't already.
+Ensure that you are able to interact with the cluster via `kubectl` (this may be `kubectl.sh` if using
+the local-up-cluster in the Kubernetes repository).
 
 ### Start all of the pods and services
+
+In order to deploy Heapster and InfluxDB, you will need to create the Kubernetes resources
+described by the contents of [deploy/kube-config/influxdb](../deploy/kube-config/influxdb).
+
+If you're running a different architecture than amd64, you should correct the image architecture 
+for the `grafana-deployment.yaml` and the `influxdb-deployment.yaml`.
+
+Ensure that you have a valid checkout of Heapster and are in the root directory of
+the Heapster repository, and then run
+
 ```shell
-$ kubectl.sh create -f deploy/kube-config/influxdb/
+$ kubectl create -f deploy/kube-config/influxdb/
+$ kubectl create -f deploy/kube-config/rbac/heapster-rbac.yaml
 ```
 
-Grafana will be accessible at `https://<masterIP>/api/v1/proxy/namespaces/default/services/monitoring-grafana/`. Use the master auth to access Grafana.
+Grafana service by default requests for a LoadBalancer. If that is not available in your cluster, consider changing that to NodePort. Use the external IP assigned to the Grafana service,
+to access Grafana.
+The default user name and password is 'admin'.
+Once you login to Grafana, add a datasource that is InfluxDB. The URL for InfluxDB will be `http://INFLUXDB_HOST:INFLUXDB_PORT`. Database name is 'k8s'. Default user name and password is 'root'.
+Grafana documentation for InfluxDB [here](http://docs.grafana.org/datasources/influxdb/).
 
-## Production setup for InfluxDB and Grafana
+Take a look at the [storage schema](storage-schema.md) to understand how metrics are stored in InfluxDB.
 
-By default, InfluxDB and Grafana are made accessible via a proxy on the Kubernetes apiserver, to make them accessible with minimal configurations on all
-Kubernetes deployments.
-This is not ideal for production deployments since the proxy will be a bottleneck. 
-To use InfluxDB and Grafana in production, we recommend setting up an [External Kubernetes Service](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/docs/services.md#external-services).
+Grafana is set up to auto-populate nodes and pods using templates.
 
-#### Guide
-1. Remove the environment variable `INFLUXDB_EXTERNAL_URL` from InfluxDB Grafana RC config [here](../deploy/kube-config/influxdb/influxdb-grafana-controller.json).
-   This option makes Grafana reach InfluxDB service via the apiserver proxy.
-
-2. Update Grafana service to either include a public IP or setup an external load balancer.
-   In the [Grafana service](../deploy/kube-config/influxdb/grafana-service.json),  set `"createExternalLoadBalancer": true` in the Grafana Service Spec or,
-   set `"PublicIPs": ["<Externally Accessible IP>"]`.
-
-3. Delete and recreate InfluxDB and Grafana RCs and services.
+The Grafana web interface can also be accessed via the api-server proxy. The URL should be visible in `kubectl cluster-info` once the above resources are created.
 
 ## Troubleshooting guide
-1. If the Grafana service is not accessible, chances are it might not be running. Use `kubectl.sh` to verify that the `heapster` and `influxdb & grafana` pods are alive.
 
-	```shell
-$ kubectl.sh get pods
-	```
+See also the [debugging documentation](debugging.md).
 
-	```shell
-$ kubectl.sh get services
-	```
+1. If the Grafana service is not accessible, it might not be running. Use `kubectl` to verify that the `heapster` and `influxdb & grafana` pods are alive.
+    ```
+    $ kubectl get pods --namespace=kube-system
+    ...
+    monitoring-grafana-927606581-0tmdx        1/1       Running   0          6d
+    monitoring-influxdb-3276295126-joqo2      1/1       Running   0          15d
+    ...
+    
+    $ kubectl get services --namespace=kube-system monitoring-grafana monitoring-influxdb
+    ```
 
-2. If the default Grafana dashboard doesn't show any graphs, check the Heapster logs with `kubectl.sh log <heapster pod name>`. Look for any errors related to accessing the Kubernetes master or the kubelet.
-
-3. To access the InfluxDB UI, you will have to open up the InfluxDB UI port (8083) on the nodes. You can do so by creating a firewall rule:
-
-	```shell
-$ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:8083" "tcp:8086" --target-tags=kubernetes-minion
-	```
-
-	Then, find out the IP address of the node where InfluxDB is running and point your web browser to `http://<nodeIP>:8083/`.
-
-	_Note: We are working on exposing the InfluxDB UI using the proxy service on the Kubernetes master._
-
-4. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](../deploy/kube-config/influxdb/influxdb-grafana-controller.json) and relaunch the controllers:
-
-	```shell
-$ deploy/kube.sh restart
-	```
+1. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pods. You can add `cpu: <millicores>` and `memory: <bytes>` in the Controller Specs for [InfluxDB](../deploy/kube-config/influxdb/influxdb.yaml) and [Grafana](../deploy/kube-config/influxdb/grafana.yaml), and relaunch the controllers by running `kubectl apply -f deploy/kube-config/influxdb/` and deleting the old influxdb pods.

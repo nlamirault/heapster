@@ -1,11 +1,8 @@
-FROM progrium/busybox
-MAINTAINER vishnuk@google.com
+FROM scratch
 
-# cAdvisor discovery via external files.
-VOLUME /var/run/heapster/hosts
+COPY heapster eventer /
+COPY ca-certificates.crt /etc/ssl/certs/
 
-RUN opkg-install ca-certificates
-RUN for cert in `ls -1 /etc/ssl/certs/*.crt | grep -v /etc/ssl/certs/ca-certificates.crt`; do cat "$cert" >> /etc/ssl/certs/ca-certificates.crt; done
-
-ADD heapster /heapster
+#   nobody:nobody
+USER 65534:65534
 ENTRYPOINT ["/heapster"]

@@ -1,17 +1,17 @@
 #!/bin/bash
-set -x
+
+set -e -x
 
 export GOPATH="$JENKINS_HOME/workspace/project"
 export GOBIN="$GOPATH/bin"
 export PATH="$GOBIN:$PATH"
 
-if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml" &> /dev/null; then
+# Kubernetes version(s) to run the integration tests against.
+kube_version="1.9.3"
+
+if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml|Makefile" &> /dev/null; then
   echo "This PR does not touch files that require integration testing. Skipping integration tests!"
   exit 0
 fi
 
-SUPPORTED_KUBE_VERSIONS="0.20.0"
-TEST_NAMESPACE="default"
-
-make test-unit
-godep go test -a -v --timeout=30m github.com/GoogleCloudPlatform/heapster/integration/... --vmodule=*=1 --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS 
+make -e SUPPORTED_KUBE_VERSIONS=$kube_version test-unit test-integration
